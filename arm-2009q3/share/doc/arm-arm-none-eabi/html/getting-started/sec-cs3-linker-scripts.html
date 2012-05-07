@@ -1,0 +1,103 @@
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1"><title>5.5. Linker Scripts</title><link rel="stylesheet" href="cs.css" type="text/css"><meta name="generator" content="DocBook XSL Stylesheets V1.74.0"><link rel="home" href="index.html" title="Sourcery G++ Lite"><link rel="up" href="chap-cs3.html" title="Chapter 5. CS3&#8482;: The CodeSourcery Common Startup Code Sequence"><link rel="prev" href="sec-cs3-interrupts.html" title="5.4. Interrupt Vectors and Handlers"><link rel="next" href="sec-cs3-supported-boards.html" title="5.6. Supported Boards for ARM EABI"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="navheader"><table width="100%" summary="Navigation header"><tr><th colspan="3" align="center">5.5. Linker Scripts</th></tr><tr><td width="20%" align="left"><a accesskey="p" href="sec-cs3-interrupts.html">Prev</a> </td><th width="60%" align="center">Chapter 5. CS3&#8482;: The CodeSourcery Common Startup Code Sequence</th><td width="20%" align="right"> <a accesskey="n" href="sec-cs3-supported-boards.html">Next</a></td></tr></table><hr></div><div class="section" lang="en"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a name="sec-cs3-linker-scripts"></a>5.5. Linker Scripts</h2></div></div></div><p>
+      CS3 provides linker scripts for each supported board.
+      Each board may be used in a number of different configurations,
+      and these are reflected in the linker script names.  The linker
+      scripts are named
+      <code class="filename"><em class="replaceable"><code>board</code></em><em class="replaceable"><code>-profile</code></em><em class="replaceable"><code>-hosted</code></em>.ld</code>, 
+      where <em class="replaceable"><code>board</code></em> is the name of the
+      board, <em class="replaceable"><code>profile</code></em> describes the
+      memory arrangement used and <em class="replaceable"><code>-hosted</code></em>
+      indicates whether hosting or semihosting is provided.
+    </p><div class="caution" style="margin-left: 0.5in; margin-right: 0.5in;"><h3 class="title">Caution</h3><p>
+        Linker scripts are required to create executable programs
+        for ARM EABI targets.  
+        
+        When invoking the Sourcery G++ linker from the command line,
+        you must explicitly supply a linker script using the
+        <code class="option">-T</code> option; otherwise a link error results.
+      </p></div><div class="section" lang="en"><div class="titlepage"><div><div><h3 class="title"><a name="id279700"></a>5.5.1. Program and Data Placement</h3></div></div></div><p>
+        Many boards have both RAM and ROM (flash) memory devices.  CS3
+        provides distinct linker scripts to place the application either
+        entirely in RAM, or in ROM where data is initialized during the
+        C initialization phase.
+      </p><p>
+        Some boards have very small amounts of RAM memory.  If you use
+        large library functions (such as <code class="function">printf</code> and
+        <code class="function">malloc</code>), you may overflow the available
+        memory.  You may need to use the ROM-based linker scripts for
+        such programs, so that the program itself is stored in ROM.  You
+        may be able to reduce the total amount of memory used by your
+        program by replacing portions of the Sourcery G++ runtime library
+        and/or startup code.
+      </p></div><div class="section" lang="en"><div class="titlepage"><div><div><h3 class="title"><a name="sec-cs3-semihosting"></a>5.5.2. Hosting and Semihosting</h3></div></div></div><p>
+        CS3 is designed to support boards without an operating system.
+        To allow functions like
+        <code class="function">open</code> and <code class="function">write</code> to
+        work without operating system support, a
+        <em class="firstterm">semihosting</em> feature is
+        supported, in conjunction with the debugger.
+      </p><p>
+        With semihosting enabled, these system calls are translated
+        into equivalent function calls on your host system.  You can
+        only use these function calls while connected to the debugger;
+        if you try to use them when disconnected from the debugger,
+        you will get a hardware exception.
+      </p><p>
+        Semihosting requires support from the remote GDB debugging stub 
+        or agent, as well as the debugger itself.
+        <span>
+          The Sourcery G++ Debug Sprite implements semihosting for all
+          supported devices.
+        </span>
+        <span>
+          Semihosting is
+          <span>also</span>
+          supported by the
+          <span>
+            GDB Simulator
+            
+          </span>
+          
+          included with Sourcery G++ Lite.
+        </span>
+        
+        However, semihosting may not be supported by debugging stubs
+        provided by third parties.  If you are using a debug device that
+        communicates with GDB using the GDB remote protocol,
+        check the documentation for your device to see whether semihosting
+        is supported.
+      </p><p>
+        A good use of semihosting is to display debugging messages.  For
+        example, this program prints a message on the standard error
+        stream on the host:
+        </p><pre class="programlisting">#include &lt;unistd.h&gt;
+
+int main () {
+  write (STDERR_FILENO, "Hello, world!\n", 14);
+  return 0;
+}</pre><p>
+      </p><p>
+        The hosted CS3 linker scripts provide the semihosting support,
+        and as such programs linked with them may only be run with the
+        debugger.  The unhosted CS3 linker scripts provide stub
+        versions of the system calls, which return an appropriate
+        error value in <code class="varname">errno</code>.  If such a stub
+        system call is required in the executable, the linker also
+        produces a warning.  Such a warning may indicate that you have
+        left debugging code active, and that your executable is larger
+        than it might need to be.
+      </p><p>
+        Some targets supported by CS3 can run a boot monitor that 
+        provides console I/O services and other basic system calls.
+        CS3 can also provide hosting via these facilities; where a boot
+        monitor is supported, this is noted in the board tables below.
+        Unlike semihosting, hosting via the boot monitor can be used when
+        running programs outside of the debugger.
+      </p></div><div class="section" lang="en"><div class="titlepage"><div><div><h3 class="title"><a name="id279833"></a>5.5.3. Choosing a Linker Script</h3></div></div></div><p>
+        When using Sourcery G++ from the command line, you must add <code class="option">-T
+        <em class="replaceable"><code>script</code></em></code> to your linking
+        command, where <em class="replaceable"><code>script</code></em> is the
+        appropriate linker script.  For example, to target
+        Altera Cyclone III Cortex-M1 boards, you could link with <code class="option">-T
+        cycloneiii-cm1-ram-hosted.ld</code>.
+      </p></div></div><div class="navfooter"><hr><table width="100%" summary="Navigation footer"><tr><td width="40%" align="left"><a accesskey="p" href="sec-cs3-interrupts.html">Prev</a> </td><td width="20%" align="center"><a accesskey="u" href="chap-cs3.html">Up</a></td><td width="40%" align="right"> <a accesskey="n" href="sec-cs3-supported-boards.html">Next</a></td></tr><tr><td width="40%" align="left" valign="top">5.4. Interrupt Vectors and Handlers </td><td width="20%" align="center"><a accesskey="h" href="index.html">Home</a></td><td width="40%" align="right" valign="top"> 5.6. Supported Boards for ARM EABI</td></tr></table></div></body></html>

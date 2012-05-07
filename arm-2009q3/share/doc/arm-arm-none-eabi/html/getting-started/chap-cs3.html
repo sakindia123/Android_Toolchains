@@ -1,0 +1,211 @@
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1"><title>Chapter 5. CS3&#8482;: The CodeSourcery Common Startup Code Sequence</title><link rel="stylesheet" href="cs.css" type="text/css"><meta name="generator" content="DocBook XSL Stylesheets V1.74.0"><meta name="description" content=" CS3 is CodeSourcery's low-level board support library. This chapter describes the organization of the system startup code and tells you how you can customize it, such as by defining your own interrupt handlers. This chapter also documents the boards supported by Sourcery G++ Lite and the compiler and linker options you need to use with them."><link rel="home" href="index.html" title="Sourcery G++ Lite"><link rel="up" href="index.html" title="Sourcery G++ Lite"><link rel="prev" href="sec-remote-debugging.html" title="4.4. Running Applications from GDB"><link rel="next" href="ch05s02.html" title="5.2. Exit and Embedded Systems"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="navheader"><table width="100%" summary="Navigation header"><tr><th colspan="3" align="center">Chapter 5. CS3&#8482;: The CodeSourcery Common Startup Code Sequence</th></tr><tr><td width="20%" align="left"><a accesskey="p" href="sec-remote-debugging.html">Prev</a> </td><th width="60%" align="center"> </th><td width="20%" align="right"> <a accesskey="n" href="ch05s02.html">Next</a></td></tr></table><hr></div><div class="chapter" lang="en"><div class="titlepage"><div><div><h2 class="title"><a name="chap-cs3"></a>Chapter 5. CS3&#8482;: The CodeSourcery Common Startup Code Sequence</h2></div><div><div class="abstract"><p class="title"><b></b></p><p>
+     CS3 is CodeSourcery's low-level board support library.
+     This chapter describes the organization of the system startup code
+     and tells you how you can customize it, such as by defining your
+     own interrupt handlers.  This chapter also documents the boards
+     supported by Sourcery G++ Lite and the compiler and linker 
+     options you need to use with them.
+    </p></div></div></div></div><div class="toc"><p><b>Table of Contents</b></p><dl><dt><span class="section"><a href="chap-cs3.html#sec-cs3-startup">5.1. Startup Sequence</a></span></dt><dt><span class="section"><a href="ch05s02.html">5.2. Exit and Embedded Systems</a></span></dt><dt><span class="section"><a href="sec-cs3-memory-layout.html">5.3. Memory Layout</a></span></dt><dt><span class="section"><a href="sec-cs3-interrupts.html">5.4. Interrupt Vectors and Handlers</a></span></dt><dt><span class="section"><a href="sec-cs3-linker-scripts.html">5.5. Linker Scripts</a></span></dt><dt><span class="section"><a href="sec-cs3-supported-boards.html">5.6. Supported Boards for ARM EABI</a></span></dt><dt><span class="section"><a href="ch05s07.html">5.7. Interrupt Vector Tables</a></span></dt><dt><span class="section"><a href="sec-cs3-regions.html">5.8. Regions and Memory Sections</a></span></dt></dl></div><p>
+    Many developers turn to the GNU toolchain for its cross-platform
+    consistency: having a single system support so many different
+    processors and boards helps to limit risk and keep learning curves
+    gentle.  Historically, however, the GNU toolchain has lacked a
+    consistent set of conventions for processor- and board-level
+    initialization, language run-time setup, and interrupt and trap
+    handler definition.
+  </p><p>
+    The CodeSourcery Common Startup Code Sequence (CS3) addresses
+    this problem.  For each supported system, CS3 provides a set of
+    linker scripts describing the system's memory map, and a board
+    support library providing generic reset, startup, and interrupt
+    handlers.  These scripts and libraries all follow a standard set
+    of conventions across a range of processors and boards.
+  </p><p>
+    In addition to providing linker support, CS3's functionality is 
+    fully integrated with the Sourcery G++ Debug Sprite.  For each
+    supported board, CS3 provides the board file containing the 
+    memory map and initialization sequence required for debugging 
+    applications on the board via the Sprite, as documented in
+    <a class="xref" href="sec-sprite-supported-boards.html" title="6.9. Supported Board Files">Section 6.9, &#8220;Supported Board Files&#8221;</a>.
+  </p><div class="section" lang="en"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a name="sec-cs3-startup"></a>5.1. Startup Sequence</h2></div></div></div><p>
+      CS3 divides the startup sequence into three phases:
+      </p><div class="itemizedlist"><ul type="disc"><li><p>In the <em class="firstterm">hard reset phase</em>, we
+          initialize the memory controller and set up the memory map.
+          </p></li><li><p>In the <em class="firstterm">assembly initialization
+          phase</em>, we prepare the stack to run C code, and
+          jump to the C initialization function.</p></li><li><p>In the <em class="firstterm">C initialization phase</em>,
+          we initialize the data areas, run constructors for
+          statically-allocated objects, and call
+          <code class="function">main</code>.</p></li></ul></div><p>
+    </p><p>
+      The hard reset and assembly initialization phases are
+      necessarily written in assembly language; at reset, there may
+      not yet be stack to hold compiler temporaries, or perhaps even
+      any RAM accessible to hold the stack.  These phases do the
+      minimum necessary to prepare the environment for running simple
+      C code.  Then, the code for the final phase may be written in C;
+      CS3 leaves as much as possible to be done at this point.
+    </p><p>
+      The CodeSourcery board support library provides default code for
+      all three phases.  The hard reset phase is implemented by
+      board-specific code.  The assembly initialization phase is
+      implemented by code specific to the processor family.  The C
+      initialization phase is implemented by generic code.
+    </p><div class="section" lang="en"><div class="titlepage"><div><div><h3 class="title"><a name="id278626"></a>5.1.1. The Hard Reset Phase</h3></div></div></div><p>
+        This phase is responsible for initializing board-specific
+        registers, such as memory base registers and DRAM controllers,
+        or scanning memory to check the available size.  It is written
+        in assembler and ends with a jump to
+        <code class="function">_start</code>, which is where the assembly
+        initialization phase begins.
+      </p><p>
+	The hard reset code is in a section named
+	<code class="literal">.cs3.reset</code>.  The section must define a
+	symbol named
+	<code class="function">__cs3_reset_<em class="replaceable"><code>sys</code></em></code>,
+	where <em class="replaceable"><code>sys</code></em> is a name for the board
+	being initialized; for example, the reset code for
+	Altera Cyclone III Cortex-M1 boards would be named
+	<code class="function">__cs3_reset_cycloneiii_cm1</code>.  The linker script
+	defines the symbol <code class="function">__cs3_reset</code> to refer
+	to this reset address.  If you need to refer to the reset
+	address from generic code, you can use this non-specific
+	<code class="function">__cs3_reset</code> name.
+      </p><p>
+        When using the Sourcery G++ Debug Sprite, the Sprite is responsible for
+        carrying out the initialization done in this phase.  In this
+        case execution begins at the start of the assembly
+        initialization phase, except for simulators as described below.
+      </p><p>
+        Some simulators provide a supervisory operation to determine
+        the amount of available memory.  This operation is performed
+        in the hard reset phase.  Thus for simulators, execution always
+        begins at
+        <code class="function">__cs3_reset_<em class="replaceable"><code>sys</code></em></code>.
+      </p><p>
+        The CodeSourcery board support library provides reasonable
+        default reset code, but you may provide your own reset code
+        by defining
+        <code class="function">__cs3_reset_<em class="replaceable"><code>sys</code></em></code>
+        in an object file or library, in a
+        <code class="literal">.cs3.reset</code> section.
+      </p></div><div class="section" lang="en"><div class="titlepage"><div><div><h3 class="title"><a name="id278727"></a>5.1.2. The Assembly Initialization Phase</h3></div></div></div><p>
+	This phase is responsible for initializing the stack pointer
+	and creating an initial stack frame.  
+	The symbol <code class="function">_start</code> marks the entry point of the
+	assembly initialization code; this name lacks the 
+	<code class="function">__cs3</code> prefix because is the symbol traditionally
+	used by debuggers and other integrated development environments 
+	for the address where program execution begins.
+	The assembly initialization phase ends with a call or jump to 
+	<code class="function">__cs3_start_c</code>.  
+      </p><p>
+	Simulators typically initialize the stack pointer and initial
+	stack frame automatically on startup.
+	CS3 can also support targets running a boot monitor that likewise
+	initializes the stack before starting user code.
+	On these targets, CS3 does not perform the assembly
+	initialization phase at all; instead,
+	<code class="function">_start</code> is aliased to
+	<code class="function">__cs3_reset_<em class="replaceable"><code>sys</code></em></code>,
+	so that execution always starts with the hard reset phase.  
+	The hard reset phase then ends with a jump directly to 
+	<code class="function">__cs3_start_c</code>.  
+      </p><p>
+	On the other hand, on bare-board targets setting the stack pointer
+	explicitly in the assembly initialization phase is required
+	even if the processor itself initializes the stack pointer 
+	automatically on reset.
+	This is to support restarting programs from
+	<code class="function">_start</code> in the debugger.
+      </p><p>
+        The value of the symbol <code class="varname">__cs3_stack</code>
+        provides the initial value of the stack pointer.  The
+        CodeSourcery linker scripts provide a default value for this
+        symbol, which you may override by defining
+        <code class="varname">__cs3_stack</code> yourself.
+      </p><p>
+        The initial stack frame is created for the use of ordinary C
+        and C++ calling conventions.  The stack should be initialized
+        so that backtraces stop cleanly at this point; this might
+        entail zeroing a dynamic link pointer, or providing
+        hand-written DWARF call frame information.
+      </p><p>
+        Finally, we call the C function
+        <code class="function">__cs3_start_c</code>.  This function never
+        returns, and <code class="function">_start</code> need not be prepared to
+        handle a return from it.
+      </p><p>
+        As with the hard reset code, the CodeSourcery board
+        support library provides reasonable default assembly
+        initialization code.  However, you may provide
+        your own code by providing a definition
+        for <code class="function">_start</code>, either in an object
+        file or a library.
+      </p></div><div class="section" lang="en"><div class="titlepage"><div><div><h3 class="title"><a name="id278843"></a>5.1.3. The C Initialization Phase</h3></div></div></div><p>
+        Finally, C code can be executed.  The C startup
+        function is declared as follows:
+
+        </p><pre class="programlisting">void __cs3_start_c (void) __attribute__ ((noreturn));</pre><p>
+
+        In this function we take the following steps:
+        </p><div class="itemizedlist"><ul type="disc"><li><p>
+              Initialize all <code class="literal">.data</code>-like sections by
+              copying their contents.
+            </p></li><li><p>
+              Clear all <code class="literal">.bss</code>-like sections.
+            </p></li><li><p>
+              Run constructors for statically-allocated objects,
+              recorded using whatever conventions are usual for
+              C++ on the target architecture.
+            </p><p>
+              CS3 reserves priorities from 0 to 100 for use by
+              initialization code.  You can handle tasks like enabling
+              interrupts, initializing coprocessors, pointing control
+              registers at interrupt vectors, and so on by defining
+              constructors with appropriate priorities.
+            </p></li><li><p>
+              Call <code class="function">main</code> as appropriate.
+            </p></li><li><p>
+	      Call <code class="function">exit</code>, if it is available.
+	    </p></li></ul></div><p>
+      </p><p>
+        As with the hard reset and assembly initialization code, the
+        CodeSourcery board support library provides a reasonable
+        definition for the <code class="function">__cs3_start_c</code>
+        function.  You may override this by providing
+        a definition for <code class="function">__cs3_start_c</code>,
+        either in an object file or in a library.
+      </p><p>
+	The CodeSourcery-provided definition of
+	<code class="function">__cs3_start_c</code> can pass command-line arguments
+	to <code class="function">main</code> using the normal C
+	<code class="varname">argc</code> and <code class="varname">argv</code> mechanism
+	if the board support package provides corresponding definitions for
+	<code class="varname">__cs3_argc</code> and <code class="varname">__cs3_argv</code>.
+	For example:
+
+	</p><pre class="programlisting">int __cs3_argc;
+char **__cs3_argv;</pre><p>
+
+	These variables should be initialized using a constructor function,
+	which is run by <code class="function">__cs3_start_c</code> after it
+	initializes the data segment.  Use the <code class="literal">constructor</code>
+	attribute on the function definition:
+
+	</p><pre class="programlisting">__attribute__((constructor)) 
+static void __cs3_init_args (void) {
+   __cs3_argc = ...;
+   __cs3_argv = ...;
+}</pre><p>
+
+	The constructor function may have an arbitrary name;
+	<code class="function">__cs3_init_args</code> is used only for illustrative
+	purposes here.
+      </p><p>
+	If definitions of <code class="varname">__cs3_argc</code> and
+	<code class="varname">__cs3_argv</code> are not provided, then the default
+	<code class="function">__cs3_start_c</code> function invokes 
+	<code class="function">main</code> with zero as the <code class="varname">argc</code>
+	argument and a null pointer as <code class="varname">argv</code>.
+      </p></div></div></div><div class="navfooter"><hr><table width="100%" summary="Navigation footer"><tr><td width="40%" align="left"><a accesskey="p" href="sec-remote-debugging.html">Prev</a> </td><td width="20%" align="center"> </td><td width="40%" align="right"> <a accesskey="n" href="ch05s02.html">Next</a></td></tr><tr><td width="40%" align="left" valign="top">4.4. Running Applications from GDB </td><td width="20%" align="center"><a accesskey="h" href="index.html">Home</a></td><td width="40%" align="right" valign="top"> 5.2. Exit and Embedded Systems</td></tr></table></div></body></html>

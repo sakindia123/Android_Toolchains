@@ -1,0 +1,61 @@
+========================================================
+* Prebuilt Android Toolchains                          *
+========================================================
+
+* Adi_Pat (Aditya Patange)
+
+* www.xda-developers.com
+
+========================================================
+
+Instructions-
+
+From your home folder-
+
+mkdir Toolchains
+git init
+git remote add origin git@github.com:AdiPat/Android_Toolchains.git
+git clone git@github.com:AdiPat/Android_Toolchains.git
+
+
+========================================================
+
+Toolchains in this repository-
+
+[1] arm-2011.09
+
+Sourcery CodeBench Lite 2011.09-69 for ARM EABI
+Release Date: 19 December 2011.
+
+
+[2] arm-2011.03
+
+Sourcery G++ Lite 2011.03-42 for ARM EABI
+Release Date: 2 May 2011.
+
+
+[3] arm-2010.09
+
+Sourcery G++ Lite 2010.09-51 for ARM EABI
+Release Date: 10 November 2010.
+
+
+[4] arm-2009q3
+
+Sourcery G++ Lite 2009q3-68 for ARM EABI
+Release Date: 20 October 2009
+
+
+[5] arm-eabi-4.4.3
+
+Toolchain from Cyanogen Mod Repo
+
+
+[6] arm-eabi-linaro-4.6.2 
+
+Linaro Toolchain 
+
+*********************************************************
+
+
+***********  ENJOY COMPILING KERNELS ********************

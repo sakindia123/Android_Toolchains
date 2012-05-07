@@ -1,0 +1,45 @@
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1"><title>5.8. Regions and Memory Sections</title><link rel="stylesheet" href="cs.css" type="text/css"><meta name="generator" content="DocBook XSL Stylesheets V1.74.0"><link rel="home" href="index.html" title="Sourcery G++ Lite"><link rel="up" href="chap-cs3.html" title="Chapter 5. CS3&#8482;: The CodeSourcery Common Startup Code Sequence"><link rel="prev" href="ch05s07.html" title="5.7. Interrupt Vector Tables"><link rel="next" href="sprite.html" title="Chapter 6. Sourcery G++ Debug Sprite"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="navheader"><table width="100%" summary="Navigation header"><tr><th colspan="3" align="center">5.8. Regions and Memory Sections</th></tr><tr><td width="20%" align="left"><a accesskey="p" href="ch05s07.html">Prev</a> </td><th width="60%" align="center">Chapter 5. CS3&#8482;: The CodeSourcery Common Startup Code Sequence</th><td width="20%" align="right"> <a accesskey="n" href="sprite.html">Next</a></td></tr></table><hr></div><div class="section" lang="en"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a name="sec-cs3-regions"></a>5.8. Regions and Memory Sections</h2></div></div></div><p>
+      The following regions are defined for ARM EABI.  
+      </p><div class="informaltable"><a name="tbl-regions"></a><table border="1"><colgroup><col><col></colgroup><thead><tr><th align="left">Region</th><th align="left">Contents</th></tr></thead><tbody><tr><td align="left"><code class="literal">itcm</code></td><td align="left"><p>ITCM</p></td></tr><tr><td align="left"><code class="literal">ram</code></td><td align="left"><p><code class="literal">.data</code> and <code class="literal">.bss</code> sections.  In ram-based profiles, also contains <code class="literal">.text</code> and other program-like sections.</p></td></tr><tr><td align="left"><code class="literal">rom</code></td><td align="left"><p><code class="literal">.text</code> and other program-like sections.  Initialization values for data-like regions.</p></td></tr></tbody></table></div><p>
+    </p><p>
+      Note that not all regions are provided in every linker script
+      or profile; see the documentation of the individual linker scripts
+      in <a class="xref" href="sec-cs3-supported-boards.html" title="5.6. Supported Boards for ARM EABI">Section 5.6, &#8220;Supported Boards for ARM EABI&#8221;</a>, above.
+    </p><p>
+      Regions documented as "Memory regions" correspond to
+      similarly-named program sections.  
+      For example, the linker script assigns the <code class="literal">.ram</code>
+      section to the <code class="literal">ram</code> region.
+      You can explicitly locate data or code in these sections using
+      section attributes in your source C or C++ code.
+      Section attributes are especially useful on code compiled for
+      boards that include special memory banks, such as a fast on-chip
+      cache memory, in addition to the default
+      <code class="literal">ram</code> and/or <code class="literal">rom</code> regions.
+      CS3 arranges for additional data-like sections to be initialized
+      in the same way as the default <code class="literal">.data</code> section.
+     </p><p>
+       As an example to illustrate the attribute syntax, you can put a variable 
+       <code class="varname">v</code> in the <code class="literal">.ram</code> section using:
+
+      </p><pre class="programlisting">int v __attribute__ ((section (".ram")));</pre><p>
+
+      To declare a function <code class="function">f</code> in this section, use:
+
+      </p><pre class="programlisting">int f (void) __attribute__ ((section (".ram"))) {...}</pre><p>
+
+      For more information about attribute syntax, see the GCC manual.
+    </p><p>
+      Regions documented as "Other regions" do not have a corresponding
+      program section.  Typically, these regions correspond to
+      memory-mapped control and I/O registers that cannot be used for
+      general data or program storage.  If you need to manipulate data in
+      these regions, you can use the CS3 memory layout facilities
+      declared in <code class="filename">cs3.h</code>, as described in
+      <a class="xref" href="sec-cs3-memory-layout.html" title="5.3. Memory Layout">Section 5.3, &#8220;Memory Layout&#8221;</a>.
+    </p><p>
+      Memory maps for boards supported by Sourcery G++ Lite for ARM EABI
+      are documented in
+      XML files in the <code class="filename">arm-none-eabi/lib/boards/</code>
+      subdirectory of your Sourcery G++ installation directory.
+    </p></div><div class="navfooter"><hr><table width="100%" summary="Navigation footer"><tr><td width="40%" align="left"><a accesskey="p" href="ch05s07.html">Prev</a> </td><td width="20%" align="center"><a accesskey="u" href="chap-cs3.html">Up</a></td><td width="40%" align="right"> <a accesskey="n" href="sprite.html">Next</a></td></tr><tr><td width="40%" align="left" valign="top">5.7. Interrupt Vector Tables </td><td width="20%" align="center"><a accesskey="h" href="index.html">Home</a></td><td width="40%" align="right" valign="top"> Chapter 6. Sourcery G++ Debug Sprite</td></tr></table></div></body></html>

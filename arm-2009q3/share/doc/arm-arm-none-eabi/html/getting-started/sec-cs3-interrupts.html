@@ -1,0 +1,193 @@
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1"><title>5.4. Interrupt Vectors and Handlers</title><link rel="stylesheet" href="cs.css" type="text/css"><meta name="generator" content="DocBook XSL Stylesheets V1.74.0"><link rel="home" href="index.html" title="Sourcery G++ Lite"><link rel="up" href="chap-cs3.html" title="Chapter 5. CS3&#8482;: The CodeSourcery Common Startup Code Sequence"><link rel="prev" href="sec-cs3-memory-layout.html" title="5.3. Memory Layout"><link rel="next" href="sec-cs3-linker-scripts.html" title="5.5. Linker Scripts"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="navheader"><table width="100%" summary="Navigation header"><tr><th colspan="3" align="center">5.4. Interrupt Vectors and Handlers</th></tr><tr><td width="20%" align="left"><a accesskey="p" href="sec-cs3-memory-layout.html">Prev</a> </td><th width="60%" align="center">Chapter 5. CS3&#8482;: The CodeSourcery Common Startup Code Sequence</th><td width="20%" align="right"> <a accesskey="n" href="sec-cs3-linker-scripts.html">Next</a></td></tr></table><hr></div><div class="section" lang="en"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a name="sec-cs3-interrupts"></a>5.4. Interrupt Vectors and Handlers</h2></div></div></div><p>
+      CS3 provides standard handlers for interrupts, exceptions and
+      traps, but also allows you to easily define your own
+      handlers as needed.  In this section, we use the term
+      <em class="firstterm">interrupt</em> as a generic term for this
+      entire class of events.
+    </p><p>
+      Different processors handle interrupts in various ways, but
+      there are two general approaches:
+      </p><div class="itemizedlist"><ul type="disc"><li><p>
+            Some processors fetch an address from an array indexed by
+            the interrupt number, and jump to that address.  We call
+            these <em class="firstterm">address vector</em> processors;
+            Cortex-M1 systems are a typical example.
+          </p></li><li><p>
+            Others multiply the interrupt number by some constant
+            factor, add a base address, and jump directly to that
+            address.  Here, the interrupt vector consists of blocks of
+            code, so we call these <em class="firstterm">code vector</em>
+            processors;  PowerPC systems are a
+            typical example.
+          </p></li></ul></div><p>
+    </p><p>
+      On address vector processors, the CS3 library provides an array
+      of pointers to interrupt handlers named
+      <code class="varname">__cs3_interrupt_vector_<em class="replaceable"><code>form</code></em></code>,
+      occupying a section named
+      <code class="literal">.cs3.interrupt_vector</code>, where
+      <em class="replaceable"><code>form</code></em> identifies the particular
+      processor variant the vector is appropriate for.  If the
+      processor supports more than one variety of interrupt vector
+      (for example, a full-length form and a shortened form), then
+      <em class="replaceable"><code>form</code></em> identifies the variety as well.
+      Each entry in the vector holds a reference to a symbol named
+      <code class="function">__cs3_isr_<em class="replaceable"><code>int</code></em></code>,
+      where <em class="replaceable"><code>int</code></em> is the customary name of
+      that interrupt on the processor, or a number if there is no
+      consistently used name.  The library further provides a
+      reasonable default definition for each
+      <code class="function">__cs3_isr_<em class="replaceable"><code>int</code></em></code>
+      handler routine.
+    </p><p>
+      To override an individual handler, provide your own definition
+      for the appropriate
+      <code class="function">__cs3_isr_<em class="replaceable"><code>int</code></em></code>
+      symbol.  The definition need not be placed in any particular
+      object file section.
+    </p><p>
+      Interrupt handlers typically require special call/return and
+      register usage conventions that are target-specific and beyond
+      the scope of this document.  As an alternative to writing
+      interrupt handlers in assembly language,
+      on some targets they may be written in C using the
+      <code class="literal">interrupt</code> attribute.  For example, to override
+      the <code class="function">__cs3_isr_nmi</code> handler, use the following
+      definition:
+
+      </p><pre class="programlisting">void __attribute__ ((interrupt)) __cs3_isr_nmi (void)
+{
+  ... custom handler code ...
+}</pre><p>
+    </p><p>
+      To override the entire interrupt vector, you can
+      define
+      <code class="varname">__cs3_interrupt_vector_<em class="replaceable"><code>form</code></em></code>,
+      placing the definition in a section named
+      <code class="literal">.cs3.interrupt_vector</code>.  The linker script
+      reports an error if the <code class="literal">.cs3.interrupt_vector</code>
+      section is empty, to ensure that the definition of
+      <code class="varname">__cs3_interrupt_vector_<em class="replaceable"><code>form</code></em></code>
+      occupies the proper section.
+    </p><p>
+      You may define the vector in C with an array of pointers using
+      the <code class="literal">section</code> attribute to place it in the
+      appropriate section.  For example, to override the interrupt
+      vector on Altera Cyclone III Cortex-M1 boards, make the following definition:
+      </p><pre class="programlisting">typedef void handler(void);
+handler *__attribute__((section (".cs3.interrupt_vector")))
+  __cs3_interrupt_vector_micro[] =
+{ ... };</pre><p>
+    </p><p>
+      On code vector processors, we follow the same conventions,
+      with the following exceptions:
+
+      </p><div class="itemizedlist"><ul type="disc"><li><p>
+            In addition to being named
+            <code class="function">__cs3_isr_<em class="replaceable"><code>int</code></em></code>,
+            each interrupt handler must also occupy a section named
+            <code class="literal">.cs3.interrupt_<em class="replaceable"><code>int</code></em></code>.
+            Naturally, each handler must fit within a single interrupt
+            vector entry.
+          </p></li><li><p>
+            Instead of providing a default definition for
+            <code class="varname">__cs3_interrupt_vector_<em class="replaceable"><code>form</code></em></code>
+            in the library, the linker script gathers the
+            <code class="literal">.cs3.interrupt_<em class="replaceable"><code>int</code></em></code>
+            sections together, in the proper order and on the
+            necessary address boundaries, and defines the
+            <code class="varname">__cs3_interrupt_vector_<em class="replaceable"><code>form</code></em></code>
+            symbol to refer to its start.
+          </p></li></ul></div><p>
+    </p><p>
+      To override an individual handler on a code vector processor,
+      you provide your own definition for
+      <code class="function">__cs3_isr_<em class="replaceable"><code>int</code></em></code>,
+      placed in an appropriate section.  The linker script ensures
+      that each
+      <code class="literal">.cs3.interrupt_<em class="replaceable"><code>int</code></em></code>
+      section is non-empty, so that placing a handler in the wrong
+      section elicits an error at link time.
+    </p><p>
+      CS3 does not allow you to override the entire interrupt
+      vector on code vector processors, because the code vector must
+      be constructed by the linker script, and thus cannot come from a
+      library or object file.  However, the portion of the linker
+      script that constructs the interrupt vector occupies its own
+      file, which other linker scripts can incorporate using the
+      <span class="command"><strong>INCLUDE</strong></span> linker script command, making it
+      easier to replace the linker script entirely and still take
+      advantage of CS3's other features.
+    </p><p><a name="para-cs3-multi-vector"></a>
+      Some processors, like the Innovasic fido, use more than one
+      interrupt vector: the processor provides several interrupt
+      vector pointer registers, each used in different circumstances.
+      Each register may point to a different vector, or some or all
+      may share vectors.
+    </p><p>
+      On these processors, CS3 provides only a single pre-constructed
+      interrupt vector, but defines a separate symbol for each
+      interrupt vector pointer register; all the symbols point to the
+      pre-constructed vector by default.  The CS3 startup code
+      initializes each register from the corresponding symbol.  You
+      can provide your own vectors by defining
+      the appropriate symbols.
+    </p><p>
+      For example, the fido processor has five contexts, each of which
+      can use its own interrupt vector; on this architecture, CS3
+      defines the
+      standard <code class="varname">__cs3_interrupt_vector_fido</code> symbol
+      referring to the pre-constructed vector, and then goes on to
+      define per-context
+      symbols <code class="varname">__cs3_interrupt_vector_fido_ctx0</code>,
+      <code class="varname">__cs3_interrupt_vector_fido_ctx1</code>, and so on,
+      all referring to <code class="varname">__cs3_interrupt_vector_fido</code>.
+      The CS3 startup code sets each context's vector register to the
+      value of the corresponding symbol.  By default, all the contexts
+      share an interrupt vector, but if your code provides its own
+      definition
+      for <code class="varname">__cs3_interrupt_vector_fido_ctx1</code>, then
+      the startup code initializes context one's register to point to
+      that vector instead.
+    </p><p>
+      This arrangement requires you to use a different approach to
+      specify a handler for a secondary context that differs from the
+      corresponding handler in the primary context.  For example, to
+      handle division-by-zero exceptions in context 1 with the
+      function <code class="function">ctx1_divide_by_zero</code>, you should
+      write the following:
+
+     </p><pre class="programlisting">
+typedef void (*handler_type) (void);
+handler_type __cs3_interrupt_vector_fido_ctx1[256];
+extern handler_type __cs3_interrupt_vector_fido[256];
+
+__attribute__((interrupt))
+void
+ctx1_divide_by_zero (void)
+{
+  /* Your code here.  */
+}
+
+__attribute__((constructor))
+void
+initialize_vector_ctx1 (void)
+{
+  /* Initialize our custom vector from the
+     pre-constructed CS3 vector.  */
+  memcpy (__cs3_interrupt_vector_fido_ctx1, 
+          __cs3_interrupt_vector_fido,
+          sizeof (__cs3_interrupt_vector_fido));
+
+  /* Initialize custom interrupt handlers.  */
+  __cs3_interrupt_vector_fido_ctx1[5] = ctx1_divide_by_zero;
+}</pre><p>
+    </p><p>
+      With this code in place, when a division-by-zero exception
+      occurs in context 1, the processor
+      calls <code class="function">ctx1_divide_by_zero</code> to handle it.
+      Defining <code class="function">initialize_vector_ctx1</code> with
+      the <code class="literal">constructor</code> attribute arranges for CS3 to
+      call it before calling your program's <code class="function">main</code>
+      function.
+    </p></div><div class="navfooter"><hr><table width="100%" summary="Navigation footer"><tr><td width="40%" align="left"><a accesskey="p" href="sec-cs3-memory-layout.html">Prev</a> </td><td width="20%" align="center"><a accesskey="u" href="chap-cs3.html">Up</a></td><td width="40%" align="right"> <a accesskey="n" href="sec-cs3-linker-scripts.html">Next</a></td></tr><tr><td width="40%" align="left" valign="top">5.3. Memory Layout </td><td width="20%" align="center"><a accesskey="h" href="index.html">Home</a></td><td width="40%" align="right" valign="top"> 5.5. Linker Scripts</td></tr></table></div></body></html>

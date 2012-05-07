@@ -1,0 +1,96 @@
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1"><title>5.3. Memory Layout</title><link rel="stylesheet" href="cs.css" type="text/css"><meta name="generator" content="DocBook XSL Stylesheets V1.74.0"><link rel="home" href="index.html" title="Sourcery G++ Lite"><link rel="up" href="chap-cs3.html" title="Chapter 5. CS3&#8482;: The CodeSourcery Common Startup Code Sequence"><link rel="prev" href="ch05s02.html" title="5.2. Exit and Embedded Systems"><link rel="next" href="sec-cs3-interrupts.html" title="5.4. Interrupt Vectors and Handlers"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="navheader"><table width="100%" summary="Navigation header"><tr><th colspan="3" align="center">5.3. Memory Layout</th></tr><tr><td width="20%" align="left"><a accesskey="p" href="ch05s02.html">Prev</a> </td><th width="60%" align="center">Chapter 5. CS3&#8482;: The CodeSourcery Common Startup Code Sequence</th><td width="20%" align="right"> <a accesskey="n" href="sec-cs3-interrupts.html">Next</a></td></tr></table><hr></div><div class="section" lang="en"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a name="sec-cs3-memory-layout"></a>5.3. Memory Layout</h2></div></div></div><p>
+      The header
+      file <code class="filename">cs3.h</code>
+      declares variables and types that describe the layout of
+      memory on the system to C code.  The variables are defined
+      by the CS3 linker script or in the board support library.
+    </p><p>
+      The following variables describe the regions of memory to be
+      initialized at startup:
+
+      </p><pre class="programlisting">/* The number of elements in __cs3_regions.  */
+const size_t __cs3_region_num;
+
+/* An untyped object, aligned on an eight-byte boundary.  */
+typedef unsigned char __cs3_byte_align8
+                      __attribute__ ((aligned (8)));
+
+struct __cs3_region
+{
+  /* Flags for this region.  None defined yet.  */
+  unsigned flags;
+
+  __cs3_byte_align8 *init;  /* Region's initial contents.  */
+  __cs3_byte_align8 *data;  /* Region's start address.  */
+
+  /* These sizes are always a multiple of eight.  */
+  size_t init_size;     /* Size of initial data.  */
+  size_t zero_size;     /* Additional size to be zeroed.  */
+};
+
+/* An array of memory regions.  __cs3_regions[0] describes
+   the region holding .data and .bss.  */
+extern const struct __cs3_region __cs3_regions[];</pre><p>
+    </p><p>
+      The following variables describe the area of memory to be used for the
+      dynamically-allocated heap:
+
+      </p><pre class="programlisting">/* The addresses of these objects are the start and end of
+   free space for the heap, typically following .data and .bss.
+   However, &amp;__cs3_heap_end may be zero, meaning that we must
+   determine the heap limit in some other way --- perhaps via a
+   supervisory operation on a simulator, or simply by treating
+   the stack pointer as the limit.  */
+extern __cs3_byte_align8 __cs3_heap_start[];
+extern __cs3_byte_align8 __cs3_heap_end[];
+
+/* The end of free space for the heap, or zero if we haven't been
+   able to determine it.  It usually points to __cs3_heap_end,
+   but in some configurations, may be overridden by a supervisory
+   call in the reset code.  */
+extern void *__cs3_heap_limit;</pre><p>
+    </p><p>
+      For each region
+      named <em class="replaceable"><code>R</code></em>, <code class="filename">cs3.h</code> declares the following
+      variables:
+
+      
+      </p><pre class="programlisting">/* The start of the region.  */
+extern unsigned char __cs3_region_start_R[]
+                     __attribute__ ((aligned (8)));
+
+/* The region's size, in bytes.  */
+extern const size_t __cs3_region_size_R;</pre><p>
+
+      At the assembly level, the linker script also defines symbols
+      with the same names and values.
+    </p><p>
+      If the region is initialized, then <code class="filename">cs3.h</code> also declares the following
+      variables, corresponding to the region's element in
+      <code class="varname">__cs3_regions</code>:
+
+      </p><pre class="programlisting">/* The data we initialize the region with.  */
+extern const unsigned char __cs3_region_init_R[]
+                           __attribute__ ((aligned (8)));
+
+/* The size of the initialized portion of the region.  */
+extern const size_t __cs3_region_init_size_R;
+
+/* The size of the additional portion to be zeroed.  */
+extern const size_t __cs3_region_zero_size_R;</pre><p>
+    </p><p>
+      Any of these identifiers may actually be defined as preprocessor
+      macros that expand to expressions of the appropriate type and
+      value.
+    </p><p>
+      Like the <span class="type">struct __cs3_region</span> members, these
+      regions are all aligned on eight-byte boundaries, and
+      their sizes are multiples of eight bytes.
+    </p><p>
+      CS3 linker scripts place the contents of sections named
+      <code class="literal">.cs3.region-head.<em class="replaceable"><code>R</code></em></code>
+      at the start of each memory region.  Note that CS3 itself may
+      want to place items (like interrupt vector tables) at these
+      locations; if there is a conflict, CS3 raises an error at link
+      time.
+    </p></div><div class="navfooter"><hr><table width="100%" summary="Navigation footer"><tr><td width="40%" align="left"><a accesskey="p" href="ch05s02.html">Prev</a> </td><td width="20%" align="center"><a accesskey="u" href="chap-cs3.html">Up</a></td><td width="40%" align="right"> <a accesskey="n" href="sec-cs3-interrupts.html">Next</a></td></tr><tr><td width="40%" align="left" valign="top">5.2. Exit and Embedded Systems </td><td width="20%" align="center"><a accesskey="h" href="index.html">Home</a></td><td width="40%" align="right" valign="top"> 5.4. Interrupt Vectors and Handlers</td></tr></table></div></body></html>
